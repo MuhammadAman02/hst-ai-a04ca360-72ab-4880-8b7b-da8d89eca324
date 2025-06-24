@@ -1,83 +1,52 @@
-from typing import Any, Dict, List, Optional, Union
+"""Application configuration settings."""
+
 import os
-from pydantic import AnyHttpUrl, field_validator, Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Optional
+from pydantic import BaseSettings, validator
+
 
 class Settings(BaseSettings):
-    """Application settings.
+    """Application settings with environment variable support."""
     
-    This class uses Pydantic's BaseSettings which automatically reads from environment variables.
-    Environment variables take precedence over values defined in the class.
-    
-    Example:
-        If you define PORT=9000 in your environment, it will override the default value of 8000.
-    """
-    # CORE SETTINGS
-    app_name: str = "FastAPI Application"
-    app_description: str = "A modern web application built with FastAPI"
-    app_version: str = "0.1.0"
+    # Application settings
+    app_name: str = "Casio Watches E-commerce"
+    app_version: str = "1.0.0"
+    app_description: str = "Premium Casio Watches Online Store"
     debug: bool = False
     
-    # API SETTINGS
-    api_prefix: str = "/api"
+    # Server settings
+    host: str = "0.0.0.0"
+    port: int = 8080
     
-    # SERVER SETTINGS
-    host: str = "0.0.0.0"  # 0.0.0.0 for Docker/production compatibility
-    port: int = 8000
-    
-    # CORS SETTINGS
-    # List of origins that are allowed to make cross-origin requests
-    # Use ["*"] to allow any origin (not recommended for production)
-    cors_origins: List[str] = []
-    
-    # SECURITY SETTINGS
-    # Secret key for signing tokens - MUST be overridden in production
-    secret_key: str = "CHANGEME_IN_PRODUCTION"
-    # Algorithm used for token signing
-    algorithm: str = "HS256"
-    # Token expiration time in minutes
+    # Security settings
+    secret_key: str = "your-secret-key-change-in-production"
     access_token_expire_minutes: int = 30
     
-    # DATABASE SETTINGS
-    # Database connection string - override in production
-    database_url: Optional[str] = None
+    # Database settings
+    database_url: str = "sqlite:///./data/casio_watches.db"
     
-    # STATIC FILES
-    static_dir: str = "app/static"
+    # External services
+    unsplash_access_key: Optional[str] = None
+    stripe_publishable_key: Optional[str] = None
+    stripe_secret_key: Optional[str] = None
     
-    # TEMPLATES
-    templates_dir: str = "app/templates"
+    # Email settings (for order notifications)
+    smtp_server: Optional[str] = None
+    smtp_port: int = 587
+    smtp_username: Optional[str] = None
+    smtp_password: Optional[str] = None
     
-    # Configure Pydantic to use environment variables
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False,
-    )
+    @validator('secret_key')
+    def validate_secret_key(cls, v):
+        if v == "your-secret-key-change-in-production":
+            import secrets
+            return secrets.token_urlsafe(32)
+        return v
     
-    # Validators
-    @field_validator("cors_origins", mode="before")
-    @classmethod
-    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
-        """Parse CORS origins from string to list.
-        
-        This allows setting CORS_ORIGINS as a comma-separated string in .env file.
-        """
-        if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",")]
-        elif isinstance(v, (list, str)):
-            return v
-        raise ValueError(v)
+    class Config:
+        env_file = ".env"
+        case_sensitive = False
 
-# Create a global settings instance
+
+# Global settings instance
 settings = Settings()
-
-# Helper function to get settings as a dictionary
-def get_settings_dict() -> Dict[str, Any]:
-    """Return settings as a dictionary for easy access."""
-    return settings.model_dump()
-
-# Helper function to get a specific setting
-def get_setting(key: str, default: Any = None) -> Any:
-    """Get a specific setting by key with an optional default value."""
-    return getattr(settings, key, default)
